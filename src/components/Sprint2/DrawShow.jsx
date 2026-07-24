@@ -34,12 +34,13 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
   const groupStructure = calculateGroupStructure(totalCatPlayers);
   const groupLabels = generateGroupLabels(groupStructure.totalGroups);
 
-  // Grupos DERIVADOS desde los jugadores (fuente de verdad única: grupo_asignado)
+  // Grupos DERIVADOS desde los jugadores — ordenados por orden de sorteo (draw_order)
   const currentCategoryGroups = {};
   groupLabels.forEach((label, idx) => {
     const maxCap = idx < groupStructure.groups6 ? 6 : 5;
     const members = jugadoresArr
       .filter(p => p.genero === activeCategory && p.grupo_asignado === label)
+      .sort((a, b) => (a.draw_order || 0) - (b.draw_order || 0))   // orden de salida del bolillero
       .map(p => p.id_numero);
     currentCategoryGroups[label] = { maxCap, miembros: members };
   });
@@ -219,10 +220,14 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
         return;
       }
 
-      // Solo actualizamos jugadores — los grupos se derivan automáticamente
+      // Calcular el número de orden de sorteo para este jugador
+      const alreadyDrawnCount = jugadoresArr.filter(p => p.sorteado).length;
+      const drawOrder = alreadyDrawnCount + 1;
+
+      // Actualizar jugadores con orden de sorteo
       const updatedPlayers = jugadoresArr.map(p =>
         p.id_numero === playerId
-          ? { ...p, sorteado: true, grupo_asignado: targetGroup }
+          ? { ...p, sorteado: true, grupo_asignado: targetGroup, draw_order: drawOrder }
           : p
       );
 
@@ -233,6 +238,7 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
         const maxCap = idx < groupStructure.groups6 ? 6 : 5;
         const miembros = updatedPlayers
           .filter(p => p.genero === activeCategory && p.grupo_asignado === label)
+          .sort((a, b) => (a.draw_order || 0) - (b.draw_order || 0))   // orden de sorteo
           .map(p => p.id_numero);
         catGroups[label] = {
           nombre: `${label} - ${activeCategory === 'F' ? 'Femenino' : 'Masculino'}`,

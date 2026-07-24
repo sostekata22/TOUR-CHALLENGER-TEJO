@@ -16,7 +16,8 @@ function buildSyncPayload(state) {
   const slimPlayers = (state.jugadores || []).map(p => ({
     id: p.id_numero,
     s: p.sorteado ? 1 : 0,
-    g: p.grupo_asignado || null
+    g: p.grupo_asignado || null,
+    o: p.draw_order || null      // orden de sorteo
   }));
 
   return {
@@ -55,7 +56,7 @@ export function reconstructStateFromSyncPayload(payload, officialPlayers) {
   const jugadores = officialPlayers.map(official => {
     const slim = slimMap[official.id_numero];
     return slim
-      ? { ...official, sorteado: slim.s === 1, grupo_asignado: slim.g || null }
+      ? { ...official, sorteado: slim.s === 1, grupo_asignado: slim.g || null, draw_order: slim.o || null }
       : { ...official };
   });
 
