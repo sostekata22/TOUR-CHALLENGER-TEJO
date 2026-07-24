@@ -45,16 +45,16 @@ export default function App() {
     stateRef.current = state;
   }, [state]);
 
-  // Suscribirse a los cambios en vivo en la nube (Firebase)
+  // Suscribirse a los cambios en vivo en la nube (Firebase) para TODOS (Admins y Espectadores)
   useEffect(() => {
     const unsubscribe = subscribeToCloudState(
       (cloudState) => {
-        if (cloudState) {
+        if (cloudState && cloudState.jugadores) {
           const cloudTime = cloudState._updatedAt || cloudState._lastUpdated || 0;
           const localTime = stateRef.current._updatedAt || 0;
 
-          // En celulares de espectadores (isPublishing = false), siempre aceptamos estados con cloudTime >= localTime
-          if (cloudTime >= localTime && !isPublishing.current) {
+          // Si el estado de la nube es más reciente o igual, o no estamos enviando nosotros localmente, sincronizamos inmediatamente
+          if (!isPublishing.current || cloudTime > localTime) {
             setState(cloudState);
             saveState(cloudState);
           }
@@ -68,7 +68,7 @@ export default function App() {
     return () => {
       unsubscribe();
     };
-  }, []); // [] para mantener una ÚNICA conexión continua sin desconectarse cada segundo
+  }, []);
 
   // Redirigir a sorteo si se pierde el rol admin estando en la pestaña de ingesta
   useEffect(() => {
@@ -84,24 +84,22 @@ export default function App() {
     };
     setState(timestampedState);
     saveState(timestampedState);
+
     if (isAdmin) {
       isPublishing.current = true;
       publishStateToCloud(timestampedState).finally(() => {
-        setTimeout(() => { isPublishing.current = false; }, 800);
+        setTimeout(() => {
+          isPublishing.current = false;
+        }, 300);
       });
     }
   };
 
   const handleUpdatePlayers = (players) => {
-    const updated = {
+    handleUpdateState({
       ...state,
       jugadores: players
-    };
-    setState(updated);
-    saveState(updated);
-    if (isAdmin) {
-      publishStateToCloud(updated);
-    }
+    });
   };
 
   const handleReset = () => {

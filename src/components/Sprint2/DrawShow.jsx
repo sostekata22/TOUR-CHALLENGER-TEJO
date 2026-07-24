@@ -5,8 +5,8 @@ import { calculateGroupStructure, generateGroupLabels } from '../../utils/tourna
 import TombolaScene from './TombolaScene';
 
 export default function DrawShow({ state, onUpdateState, onProceedToMatches, isAdmin, isReadOnly }) {
-  const [activeCategory, setActiveCategory] = useState(state.estado_sorteo?.categoria_activa || 'M'); // 'M' o 'F'
-  // Estado de revelación sincronizado globalmente a través de state.estado_sorteo para celulares de espectadores
+  const activeCategory = state.estado_sorteo?.categoria_activa || 'M'; // 'M' o 'F'
+  // Estado de revelación sincronizado globalmente a través de state.estado_sorteo para celulares de espectadores y admins
   const pasoRevelacion = state.estado_sorteo?.paso_revelacion ?? 0; // 0: IDLE, 1: BALL, 2: NAME, 3: ROLE
   const currentBall = state.estado_sorteo?.bolilla_actual ?? null;
   const refereeModal = state.estado_sorteo?.referee_modal ?? false;
