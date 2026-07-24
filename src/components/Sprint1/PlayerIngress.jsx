@@ -137,7 +137,7 @@ export default function PlayerIngress({ players, onUpdatePlayers, onProceedToDra
             className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all border border-slate-700"
           >
             <Sparkles className="w-4 h-4 text-amber-400" />
-            <span>Cargar Demostración (86 Jugadores)</span>
+            <span>Cargar Jugadores</span>
           </button>
 
           <button

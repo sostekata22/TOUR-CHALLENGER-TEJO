@@ -112,7 +112,7 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
 
   // Avanzar un paso en la máquina de estados SINCRO GLOBAL
   const handleNextStep = () => {
-    if (isReadOnly) return;
+    if (isReadOnly || refereeModal || completedGroupModal) return;
 
     if (pasoRevelacion === 0) {
       const snapshot = state.jugadores.filter(p => p.genero === activeCategory && !p.sorteado);
@@ -276,10 +276,10 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
 
 
 
-  // Auto-play interval
+  // Auto-play interval (se pausa si hay cartel de Árbitro o de Grupo Completo)
   useEffect(() => {
     let timer = null;
-    if (!isReadOnly && isAuto && eligiblePlayers.length > 0 && !refereeModal) {
+    if (!isReadOnly && isAuto && eligiblePlayers.length > 0 && !refereeModal && !completedGroupModal) {
       timer = setInterval(() => {
         handleNextStep();
       }, speed * 1000);
@@ -287,7 +287,7 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
       setIsAuto(false);
     }
     return () => clearInterval(timer);
-  }, [isAuto, pasoRevelacion, eligiblePlayers.length, speed, refereeModal, isReadOnly]);
+  }, [isAuto, pasoRevelacion, eligiblePlayers.length, speed, refereeModal, completedGroupModal, isReadOnly]);
 
   // Función para cerrar el modal de Árbitro sincronizado en Firebase
   const handleDismissRefereeModal = () => {
