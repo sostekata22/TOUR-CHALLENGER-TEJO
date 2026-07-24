@@ -29,7 +29,9 @@ export default function PlayerIngress({ players, onUpdatePlayers, onProceedToDra
   const handleLoadSample = () => {
     const sample = generateSampleData();
     onUpdatePlayers(sample);
-    setValidationMessages(['Cargada lista de demostración oficial (25 Mujeres y 61 Varones).']);
+    const fCount = sample.filter(p => p.genero === 'F').length;
+    const mCount = sample.filter(p => p.genero === 'M').length;
+    setValidationMessages([`Cargada lista oficial completa (${fCount} Mujeres y ${mCount} Varones - Total ${sample.length}).`]);
   };
 
   // Manejador para agregar jugador manual

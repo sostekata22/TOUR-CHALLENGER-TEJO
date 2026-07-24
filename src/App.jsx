@@ -26,13 +26,14 @@ export default function App() {
     }
   };
 
-  // Cargar datos iniciales de la muestra si está vacío
+  // Cargar datos iniciales de la muestra si está vacío o desactualizado (< 86 jugadores)
   useEffect(() => {
-    if (!state.jugadores || state.jugadores.length === 0) {
+    if (!state.jugadores || state.jugadores.length < 86) {
       const sample = generateSampleData();
       const updated = {
         ...state,
-        jugadores: sample
+        jugadores: sample,
+        _updatedAt: Date.now()
       };
       setState(updated);
       saveState(updated);
@@ -63,7 +64,7 @@ export default function App() {
     }
 
     const handleStorageChange = (e) => {
-      if (e.key === 'tour_challenger_tejo_db_v1' && e.newValue) {
+      if (e.key && e.key.startsWith('tour_challenger_tejo_db_') && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
           if (parsed && parsed.jugadores && !isPublishing.current) {

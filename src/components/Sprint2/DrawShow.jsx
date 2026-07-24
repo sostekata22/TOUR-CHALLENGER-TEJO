@@ -5,18 +5,10 @@ import { calculateGroupStructure, generateGroupLabels } from '../../utils/tourna
 import TombolaScene from './TombolaScene';
 
 export default function DrawShow({ state, onUpdateState, onProceedToMatches, isAdmin, isReadOnly }) {
-  // Categória activa: sincronizada globalmente pero con estado local reactivo para que siempre se pueda cambiar de vista
-  const [localCategory, setLocalCategory] = useState(state.estado_sorteo?.categoria_activa || 'M');
+  // Categória activa independiente para la vista del usuario
+  const [activeCategory, setActiveCategory] = useState(state.estado_sorteo?.categoria_activa || 'M');
 
-  // Mantener localCategory en sync con la nube si llega un cambio desde Firebase
-  useEffect(() => {
-    if (state.estado_sorteo?.categoria_activa) {
-      setLocalCategory(state.estado_sorteo.categoria_activa);
-    }
-  }, [state.estado_sorteo?.categoria_activa]);
-
-  const activeCategory = localCategory;
-  // Estado de revelación sincronizado globalmente a través de state.estado_sorteo para celulares de espectadores y admins
+  // Estado de revelación sincronizado globalmente a través de state.estado_sorteo
   const pasoRevelacion = state.estado_sorteo?.paso_revelacion ?? 0; // 0: IDLE, 1: BALL, 2: NAME, 3: ROLE
   const currentBall = state.estado_sorteo?.bolilla_actual ?? null;
   const refereeModal = state.estado_sorteo?.referee_modal ?? false;
@@ -340,7 +332,7 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
 
   // Cambio de rama (Femenino / Masculino)
   const handleSwitchCategory = (cat) => {
-    setLocalCategory(cat);
+    setActiveCategory(cat);
     setIsAuto(false);
     if (!isReadOnly) {
       onUpdateState({
@@ -397,6 +389,8 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
             >
               Entendido (Continuar Sorteo)
             </button>
+          </div>
+        </div>
       )}
 
       {/* OVERLAY DE GRUPO COMPLETO */}
