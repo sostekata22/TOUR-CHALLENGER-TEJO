@@ -6,11 +6,13 @@ import TombolaScene from './TombolaScene';
 
 export default function DrawShow({ state, onUpdateState, onProceedToMatches, isAdmin, isReadOnly }) {
   const [activeCategory, setActiveCategory] = useState(state.estado_sorteo?.categoria_activa || 'M'); // 'M' o 'F'
-  const [pasoRevelacion, setPasoRevelacion] = useState(0); // 0: IDLE, 1: BALL, 2: NAME, 3: ROLE
-  const [currentBall, setCurrentBall] = useState(null);
+  // Estado de revelación sincronizado globalmente a través de state.estado_sorteo para celulares de espectadores
+  const pasoRevelacion = state.estado_sorteo?.paso_revelacion ?? 0; // 0: IDLE, 1: BALL, 2: NAME, 3: ROLE
+  const currentBall = state.estado_sorteo?.bolilla_actual ?? null;
+  const refereeModal = state.estado_sorteo?.referee_modal ?? false;
+
   const [isAuto, setIsAuto] = useState(false);
   const [speed, setSpeed] = useState(2.5); // segundos
-  const [refereeModal, setRefereeModal] = useState(false);
   const [isSpinningFast, setIsSpinningFast] = useState(false);
 
   // Filtrar participantes no sorteados por categoría activa
@@ -46,28 +48,17 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
         grupo_asignado: null
       }));
 
-      const resetCatGroups = {};
-      groupLabels.forEach((label, idx) => {
-        const maxCap = idx < groupStructure.groups6 ? 6 : 5;
-        resetCatGroups[label] = {
-          nombre: `${label} - ${activeCategory === 'F' ? 'Femenino' : 'Masculino'}`,
-          maxCap,
-          miembros: []
-        };
-      });
-
-      setPasoRevelacion(0);
-      setCurrentBall(null);
-      setRefereeModal(false);
       setIsAuto(false);
 
       onUpdateState({
         ...state,
-        jugadores: resetPlayers,
-        grupos: {
-          ...state.grupos,
-          [activeCategory]: resetCatGroups
+        estado_sorteo: {
+          ...state.estado_sorteo,
+          paso_revelacion: 0,
+          bolilla_actual: null,
+          referee_modal: false
         },
+        jugadores: resetPlayers,
         partidos: [],
         playoffs: []
       });
@@ -107,9 +98,8 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
     }
   };
 
-  // Disparar confeti alegre (Solo si es Mesa de Control)
+  // Disparar confeti alegre
   const triggerConfetti = () => {
-    if (isReadOnly) return;
     confetti({
       particleCount: 120,
       spread: 80,
@@ -117,12 +107,11 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
     });
   };
 
-  // Avanzar un paso en la máquina de estados
+  // Avanzar un paso en la máquina de estados SINCRO GLOBAL
   const handleNextStep = () => {
     if (isReadOnly) return;
 
     if (pasoRevelacion === 0) {
-      // Capturamos el array AHORA (evita closure stale en setTimeout)
       const snapshot = state.jugadores.filter(p => p.genero === activeCategory && !p.sorteado);
       if (snapshot.length === 0) return;
 
@@ -132,40 +121,68 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
         const randomIndex = Math.floor(Math.random() * snapshot.length);
         const selected = snapshot[randomIndex];
 
-        // Guardia: si por alguna razón selected es undefined, abortamos
         if (!selected || selected.id_numero == null) {
           setIsSpinningFast(false);
           return;
         }
 
-        setCurrentBall({
+        const ball = {
           id_numero: selected.id_numero,
           nombre: selected.nombre || 'Sin nombre',
           es_arbitro: selected.es_arbitro === true
-        });
-        setPasoRevelacion(1);
-        setRefereeModal(false);
+        };
+
         setIsSpinningFast(false);
+        onUpdateState({
+          ...state,
+          estado_sorteo: {
+            ...state.estado_sorteo,
+            paso_revelacion: 1,
+            bolilla_actual: ball,
+            referee_modal: false
+          }
+        });
       }, 400);
 
     } else if (pasoRevelacion === 1) {
-      setPasoRevelacion(2);
+      onUpdateState({
+        ...state,
+        estado_sorteo: {
+          ...state.estado_sorteo,
+          paso_revelacion: 2
+        }
+      });
 
     } else if (pasoRevelacion === 2) {
-      if (currentBall?.es_arbitro) {
-        setRefereeModal(true);
+      const isRef = currentBall?.es_arbitro === true;
+      if (isRef) {
         playJoyfulSound();
         triggerConfetti();
       }
-      setPasoRevelacion(3);
+
+      onUpdateState({
+        ...state,
+        estado_sorteo: {
+          ...state.estado_sorteo,
+          paso_revelacion: 3,
+          referee_modal: isRef
+        }
+      });
 
     } else if (pasoRevelacion === 3) {
       const ballToAssign = currentBall;
-      setRefereeModal(false);
-      setCurrentBall(null);
-      setPasoRevelacion(0);
       if (ballToAssign?.id_numero != null) {
         assignPlayerToGroup(ballToAssign.id_numero);
+      } else {
+        onUpdateState({
+          ...state,
+          estado_sorteo: {
+            ...state.estado_sorteo,
+            paso_revelacion: 0,
+            bolilla_actual: null,
+            referee_modal: false
+          }
+        });
       }
     }
   };
@@ -226,6 +243,12 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
 
       onUpdateState({
         ...state,
+        estado_sorteo: {
+          ...state.estado_sorteo,
+          paso_revelacion: 0,
+          bolilla_actual: null,
+          referee_modal: false
+        },
         jugadores: updatedPlayers,
         grupos: updatedGrupos
       });
