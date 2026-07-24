@@ -5,7 +5,7 @@ import DrawShow from './components/Sprint2/DrawShow';
 import MatchesAndCourts from './components/Sprint3/MatchesAndCourts';
 import PlayoffsBracket from './components/Sprint4/PlayoffsBracket';
 import { getInitialState, saveState, resetState, generateSampleData, realSalinasPlayers } from './services/dataService';
-import { subscribeToCloudState, publishStateToCloud } from './services/firebaseService';
+import { subscribeToCloudState, publishStateToCloud, reconstructStateFromSyncPayload } from './services/firebaseService';
 
 export default function App() {
   const [state, setState] = useState(() => getInitialState());
@@ -91,33 +91,40 @@ export default function App() {
     };
   }, []);
 
-  // Suscribirse a los cambios en vivo en la nube (Firebase) para TODOS (Admins y Espectadores)
+  // Suscribirse a los cambios en vivo en la nube (Firebase/ntfy.sh) para TODOS
   useEffect(() => {
     const unsubscribe = subscribeToCloudState(
       (cloudState) => {
-        if (cloudState && cloudState.jugadores) {
-          const cloudTime = cloudState._updatedAt || cloudState._lastUpdated || 0;
-          const localTime = stateRef.current._updatedAt || 0;
+        if (!cloudState) return;
 
-          if (!isPublishing.current || cloudTime > localTime) {
-            // PROTECCIÓN: nunca reemplazar jugadores oficiales con lista incompleta de la nube
-            const cloudPlayers = cloudState.jugadores || [];
-            const safeState = cloudPlayers.length >= realSalinasPlayers.length
-              ? cloudState
-              : {
-                  ...cloudState,
-                  jugadores: stateRef.current.jugadores && stateRef.current.jugadores.length >= realSalinasPlayers.length
-                    ? stateRef.current.jugadores
-                    : realSalinasPlayers
-                };
-            setState(safeState);
-            saveState(safeState);
-          }
+        const cloudTime = cloudState._updatedAt || cloudState._lastUpdated || 0;
+        const localTime = stateRef.current._updatedAt || 0;
+
+        // Solo aplicar si es más reciente que lo que tenemos
+        if (isPublishing.current && cloudTime <= localTime) return;
+
+        // Garantizar que los jugadores siempre sean la lista oficial completa
+        let safeJugadores = cloudState.jugadores || [];
+        if (safeJugadores.length < realSalinasPlayers.length) {
+          // Reconstruir desde la lista oficial preservando el estado del sorteo
+          const savedMap = {};
+          safeJugadores.forEach(p => { if (p && p.id_numero != null) savedMap[p.id_numero] = p; });
+          safeJugadores = realSalinasPlayers.map(official => {
+            const saved = savedMap[official.id_numero];
+            return saved
+              ? { ...official, sorteado: saved.sorteado || false, grupo_asignado: saved.grupo_asignado || null }
+              : { ...official };
+          });
         }
+
+        const safeState = { ...cloudState, jugadores: safeJugadores };
+        setState(safeState);
+        saveState(safeState);
       },
       (onlineStatus) => {
         setIsOnline(onlineStatus);
-      }
+      },
+      realSalinasPlayers   // <-- Lista oficial para reconstruir payload slim en móviles
     );
 
     return () => {
