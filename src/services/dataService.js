@@ -122,23 +122,51 @@ const defaultInitialState = {
   manualTieBreakers: {}
 };
 
-// Cargar estado inicial
+// Cargar estado inicial — siempre usa la lista oficial realSalinasPlayers como base
 export function getInitialState() {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (!parsed.jugadores || parsed.jugadores.length !== 86) {
-        saveState(defaultInitialState);
-        return defaultInitialState;
+      if (parsed && parsed.jugadores && parsed.jugadores.length >= 86) {
+        // Estado válido: conservar pero asegurar que los jugadores oficiales estén presentes
+        return mergeOfficialPlayers(parsed);
       }
-      return parsed;
+      // Estado incompleto: reconstruir con jugadores oficiales + estado guardado
+      if (parsed && typeof parsed === 'object') {
+        const merged = { ...defaultInitialState, ...parsed, jugadores: realSalinasPlayers };
+        saveState(merged);
+        return merged;
+      }
     } catch (e) {
       console.error('Error cargando estado de localStorage:', e);
     }
   }
   saveState(defaultInitialState);
   return defaultInitialState;
+}
+
+/**
+ * Fusiona el estado de sorteo guardado con la lista oficial de jugadores.
+ * Preserva sorteado y grupo_asignado pero usa los nombres/géneros oficiales.
+ */
+function mergeOfficialPlayers(savedState) {
+  const savedPlayers = savedState.jugadores || [];
+  const savedMap = {};
+  savedPlayers.forEach(p => {
+    if (p && p.id_numero != null) savedMap[p.id_numero] = p;
+  });
+
+  const merged = realSalinasPlayers.map(official => {
+    const saved = savedMap[official.id_numero];
+    return saved ? {
+      ...official,
+      sorteado: saved.sorteado || false,
+      grupo_asignado: saved.grupo_asignado || null
+    } : { ...official };
+  });
+
+  return { ...savedState, jugadores: merged };
 }
 
 // Guardar estado
