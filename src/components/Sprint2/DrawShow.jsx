@@ -19,8 +19,13 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
   const [isSpinningFast, setIsSpinningFast] = useState(false);
   const [inspectGroupLabel, setInspectGroupLabel] = useState(null); // Grupo ampliado manualmente por usuario/espectador
 
-  // Filtrar participantes no sorteados por categoría activa
-  const jugadoresArr = Array.isArray(state.jugadores) ? state.jugadores : Object.values(state.jugadores || {});
+  // Normalizar array de jugadores garantizando que género sea 'F' o 'M'
+  const jugadoresRaw = Array.isArray(state.jugadores) ? state.jugadores : Object.values(state.jugadores || {});
+  const jugadoresArr = jugadoresRaw.map(p => ({
+    ...p,
+    genero: (p.genero && (String(p.genero).trim().toUpperCase().startsWith('F') || String(p.genero).trim().toUpperCase().includes('FEM') || String(p.genero).trim().toUpperCase().includes('MUJ'))) ? 'F' : 'M'
+  }));
+
   const eligiblePlayers = jugadoresArr.filter(p => p.genero === activeCategory && !p.sorteado);
   const drawnPlayers = jugadoresArr.filter(p => p.genero === activeCategory && p.sorteado);
 
@@ -116,7 +121,7 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
     if (isReadOnly || refereeModal || completedGroupModal) return;
 
     if (pasoRevelacion === 0) {
-      const snapshot = state.jugadores.filter(p => p.genero === activeCategory && !p.sorteado);
+      const snapshot = jugadoresArr.filter(p => p.genero === activeCategory && !p.sorteado);
       if (snapshot.length === 0) return;
 
       setIsSpinningFast(true);

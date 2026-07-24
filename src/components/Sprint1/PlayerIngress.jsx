@@ -16,11 +16,17 @@ export default function PlayerIngress({ players, onUpdatePlayers, onProceedToDra
   const [newGenero, setNewGenero] = useState('M');
   const [newArbitro, setNewArbitro] = useState(false);
 
-  // Estadísticas
-  const totalCount = players.length;
-  const femalePlayers = players.filter(p => p.genero === 'F');
-  const malePlayers = players.filter(p => p.genero === 'M');
-  const refereeCount = players.filter(p => p.es_arbitro).length;
+  // Estadísticas con normalización de género
+  const playersRaw = Array.isArray(players) ? players : Object.values(players || {});
+  const normalizedPlayers = playersRaw.map(p => ({
+    ...p,
+    genero: (p.genero && (String(p.genero).trim().toUpperCase().startsWith('F') || String(p.genero).trim().toUpperCase().includes('FEM') || String(p.genero).trim().toUpperCase().includes('MUJ'))) ? 'F' : 'M'
+  }));
+
+  const totalCount = normalizedPlayers.length;
+  const femalePlayers = normalizedPlayers.filter(p => p.genero === 'F');
+  const malePlayers = normalizedPlayers.filter(p => p.genero === 'M');
+  const refereeCount = normalizedPlayers.filter(p => p.es_arbitro).length;
 
   const femaleStructure = calculateGroupStructure(femalePlayers.length);
   const maleStructure = calculateGroupStructure(malePlayers.length);
@@ -104,7 +110,7 @@ export default function PlayerIngress({ players, onUpdatePlayers, onProceedToDra
   };
 
   // Filtrado de tabla
-  const filteredPlayers = players.filter(p => {
+  const filteredPlayers = normalizedPlayers.filter(p => {
     const matchesSearch = p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           p.id_numero.toString().includes(searchTerm);
     const matchesCategory = categoryFilter === 'ALL' || p.genero === categoryFilter;
