@@ -45,6 +45,42 @@ export default function App() {
     stateRef.current = state;
   }, [state]);
 
+  // Canal de sincronización en tiempo real entre pestañas/ventanas navegadoras
+  useEffect(() => {
+    let bc = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      bc = new BroadcastChannel('tour_tejo_sync_channel');
+      bc.onmessage = (event) => {
+        if (event.data && event.data.jugadores && !isPublishing.current) {
+          const incomingTime = event.data._updatedAt || 0;
+          const localTime = stateRef.current._updatedAt || 0;
+          if (incomingTime >= localTime) {
+            setState(event.data);
+            saveState(event.data);
+          }
+        }
+      };
+    }
+
+    const handleStorageChange = (e) => {
+      if (e.key === 'tour_challenger_tejo_db_v1' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed && parsed.jugadores && !isPublishing.current) {
+            setState(parsed);
+          }
+        } catch (err) {}
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
   // Suscribirse a los cambios en vivo en la nube (Firebase) para TODOS (Admins y Espectadores)
   useEffect(() => {
     const unsubscribe = subscribeToCloudState(
@@ -53,7 +89,6 @@ export default function App() {
           const cloudTime = cloudState._updatedAt || cloudState._lastUpdated || 0;
           const localTime = stateRef.current._updatedAt || 0;
 
-          // Si el estado de la nube es más reciente o igual, o no estamos enviando nosotros localmente, sincronizamos inmediatamente
           if (!isPublishing.current || cloudTime > localTime) {
             setState(cloudState);
             saveState(cloudState);
@@ -84,6 +119,15 @@ export default function App() {
     };
     setState(timestampedState);
     saveState(timestampedState);
+
+    // Emitir a otras pestañas/ventanas abiertas en la misma laptop
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('tour_tejo_sync_channel');
+        bc.postMessage(timestampedState);
+        bc.close();
+      }
+    } catch (e) {}
 
     if (isAdmin) {
       isPublishing.current = true;
