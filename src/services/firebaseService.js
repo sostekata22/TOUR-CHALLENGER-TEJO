@@ -1,4 +1,4 @@
-import { ref, set, onValue, off } from 'firebase/database';
+import { ref, set, onValue, off, get } from 'firebase/database';
 import { db, firebaseInitialized } from './firebaseConfig';
 
 const TOURNAMENT_PATH = 'tournaments/salinas2026/state';
@@ -26,6 +26,7 @@ export async function publishStateToCloud(state) {
 
 /**
  * Suscribe a los celulares espectadores y dispositivos a las actualizaciones en tiempo real.
+ * Usa tanto WebSocket onValue como sondeo periódico fallback (get) para celulares.
  * @param {Function} onStateUpdate - Callback invocado con el nuevo estado del torneo.
  * @param {Function} onStatusChange - Callback de estado de conexión (isConnected: boolean).
  * @returns {Function} Función para cancelar la suscripción (desuscripción limpia).
@@ -47,7 +48,7 @@ export function subscribeToCloudState(onStateUpdate, onStatusChange) {
     if (onStatusChange) onStatusChange(false);
   });
 
-  // Escuchar cambios del torneo
+  // Escuchar cambios del torneo en tiempo real por WebSocket
   const tournamentListener = onValue(tournamentRef, (snapshot) => {
     const data = snapshot.val();
     if (data) {
@@ -57,8 +58,21 @@ export function subscribeToCloudState(onStateUpdate, onStatusChange) {
     console.warn('Error recibiendo datos en tiempo real:', error);
   });
 
+  // Polling de respaldo cada 2.5s (garantiza recepción inmediata en celulares móviles)
+  const pollInterval = setInterval(async () => {
+    try {
+      const snap = await get(tournamentRef);
+      if (snap.exists()) {
+        onStateUpdate(snap.val());
+      }
+    } catch (e) {
+      // Ignorar errores puntuales de polling
+    }
+  }, 2500);
+
   // Retornar función de limpieza
   return () => {
+    clearInterval(pollInterval);
     off(tournamentRef, 'value', tournamentListener);
     off(connRef, 'value', connListener);
   };

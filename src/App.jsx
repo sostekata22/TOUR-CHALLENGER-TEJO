@@ -40,14 +40,20 @@ export default function App() {
     }
   }, []);
 
+  const stateRef = React.useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
   // Suscribirse a los cambios en vivo en la nube (Firebase)
   useEffect(() => {
     const unsubscribe = subscribeToCloudState(
       (cloudState) => {
         if (cloudState) {
-          // Aceptamos el estado de la nube si es más reciente o si no estamos publicando localmente
-          const cloudTime = cloudState._updatedAt || 0;
-          const localTime = state._updatedAt || 0;
+          const cloudTime = cloudState._updatedAt || cloudState._lastUpdated || 0;
+          const localTime = stateRef.current._updatedAt || 0;
+
+          // En celulares de espectadores (isPublishing = false), siempre aceptamos estados con cloudTime >= localTime
           if (cloudTime >= localTime && !isPublishing.current) {
             setState(cloudState);
             saveState(cloudState);
@@ -62,7 +68,7 @@ export default function App() {
     return () => {
       unsubscribe();
     };
-  }, [state._updatedAt]);
+  }, []); // [] para mantener una ÚNICA conexión continua sin desconectarse cada segundo
 
   // Redirigir a sorteo si se pierde el rol admin estando en la pestaña de ingesta
   useEffect(() => {
