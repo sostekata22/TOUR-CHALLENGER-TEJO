@@ -5,11 +5,22 @@ import { calculateGroupStructure, generateGroupLabels } from '../../utils/tourna
 import TombolaScene from './TombolaScene';
 
 export default function DrawShow({ state, onUpdateState, onProceedToMatches, isAdmin, isReadOnly }) {
-  const activeCategory = state.estado_sorteo?.categoria_activa || 'M'; // 'M' o 'F'
+  // Categória activa: sincronizada globalmente pero con estado local reactivo para que siempre se pueda cambiar de vista
+  const [localCategory, setLocalCategory] = useState(state.estado_sorteo?.categoria_activa || 'M');
+
+  // Mantener localCategory en sync con la nube si llega un cambio desde Firebase
+  useEffect(() => {
+    if (state.estado_sorteo?.categoria_activa) {
+      setLocalCategory(state.estado_sorteo.categoria_activa);
+    }
+  }, [state.estado_sorteo?.categoria_activa]);
+
+  const activeCategory = localCategory;
   // Estado de revelación sincronizado globalmente a través de state.estado_sorteo para celulares de espectadores y admins
   const pasoRevelacion = state.estado_sorteo?.paso_revelacion ?? 0; // 0: IDLE, 1: BALL, 2: NAME, 3: ROLE
   const currentBall = state.estado_sorteo?.bolilla_actual ?? null;
   const refereeModal = state.estado_sorteo?.referee_modal ?? false;
+  const completedGroupModal = state.estado_sorteo?.completed_group_modal ?? null;
 
   const [isAuto, setIsAuto] = useState(false);
   const [speed, setSpeed] = useState(2.5); // segundos
@@ -233,13 +244,26 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
       });
       updatedGrupos[activeCategory] = catGroups;
 
-      // Confeti si el grupo se llena
-      const newCount = updatedPlayers.filter(
+      // Confeti y Modal de Grupo Completo si se llena la capacidad
+      const groupMembers = updatedPlayers.filter(
         p => p.genero === activeCategory && p.grupo_asignado === targetGroup
-      ).length;
+      );
       const groupIdx = groupLabels.indexOf(targetGroup);
       const maxCap = groupIdx < groupStructure.groups6 ? 6 : 5;
-      if (newCount >= maxCap) triggerConfetti();
+
+      let newCompletedModal = null;
+      if (groupMembers.length >= maxCap) {
+        triggerConfetti();
+        newCompletedModal = {
+          label: targetGroup,
+          maxCap,
+          players: groupMembers.map(p => ({
+            id_numero: p.id_numero,
+            nombre: p.nombre,
+            es_arbitro: p.es_arbitro
+          }))
+        };
+      }
 
       onUpdateState({
         ...state,
@@ -247,7 +271,8 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
           ...state.estado_sorteo,
           paso_revelacion: 0,
           bolilla_actual: null,
-          referee_modal: false
+          referee_modal: false,
+          completed_group_modal: newCompletedModal
         },
         jugadores: updatedPlayers,
         grupos: updatedGrupos
@@ -284,33 +309,52 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
     });
   };
 
-  // Escuchar teclado (Espacio, Enter, Escape) para cerrar el cartel de Árbitro
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (refereeModal && (e.code === 'Space' || e.code === 'Enter' || e.code === 'Escape')) {
-        e.preventDefault();
-        handleDismissRefereeModal();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [refereeModal, state]);
-
-  // Cambio de rama (Femenino / Masculino)
-  const handleSwitchCategory = (cat) => {
+  // Función para cerrar el modal de Grupo Completo sincronizado en Firebase
+  const handleDismissCompletedGroupModal = () => {
     if (isReadOnly) return;
-    setActiveCategory(cat);
-    setIsAuto(false);
     onUpdateState({
       ...state,
       estado_sorteo: {
         ...state.estado_sorteo,
-        categoria_activa: cat,
-        paso_revelacion: 0,
-        bolilla_actual: null,
-        referee_modal: false
+        completed_group_modal: null
       }
     });
+  };
+
+  // Escuchar teclado (Espacio, Enter, Escape) para cerrar modales de Árbitro y Grupo Completo
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === 'Space' || e.code === 'Enter' || e.code === 'Escape') {
+        if (refereeModal) {
+          e.preventDefault();
+          handleDismissRefereeModal();
+        } else if (completedGroupModal) {
+          e.preventDefault();
+          handleDismissCompletedGroupModal();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [refereeModal, completedGroupModal, state]);
+
+  // Cambio de rama (Femenino / Masculino)
+  const handleSwitchCategory = (cat) => {
+    setLocalCategory(cat);
+    setIsAuto(false);
+    if (!isReadOnly) {
+      onUpdateState({
+        ...state,
+        estado_sorteo: {
+          ...state.estado_sorteo,
+          categoria_activa: cat,
+          paso_revelacion: 0,
+          bolilla_actual: null,
+          referee_modal: false,
+          completed_group_modal: null
+        }
+      });
+    }
   };
 
   return (
@@ -352,6 +396,76 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
               className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl transition-all shadow-lg shadow-emerald-500/30"
             >
               Entendido (Continuar Sorteo)
+            </button>
+      )}
+
+      {/* OVERLAY DE GRUPO COMPLETO */}
+      {completedGroupModal && (
+        <div
+          onClick={handleDismissCompletedGroupModal}
+          className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-6 text-center cursor-pointer select-none animate-in fade-in zoom-in duration-200"
+        >
+          <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-amber-950/90 border-4 border-amber-500/80 p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-2xl shadow-amber-500/30 ring-4 ring-amber-500/30 flex flex-col items-center justify-center space-y-5">
+            
+            <div className="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+              <Sparkles className="w-8 h-8 animate-bounce" />
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-xs font-black tracking-widest text-amber-400 uppercase">
+                ¡GRUPO CONFORMADO!
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight uppercase">
+                GRUPO {completedGroupModal.label}
+              </h2>
+              <p className="text-xs text-slate-300 font-semibold">
+                {completedGroupModal.maxCap} JUGADORES COMPONENTES
+              </p>
+            </div>
+
+            {/* Lista de Jugadores en Orden de Salida */}
+            <div className="w-full space-y-2 max-h-72 overflow-y-auto pr-1 text-left">
+              {completedGroupModal.players.map((p, idx) => (
+                <div
+                  key={p.id_numero}
+                  className="flex items-center justify-between p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-slate-700 transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <span className="text-xs font-mono font-bold text-slate-400 w-5">
+                      {idx + 1}º
+                    </span>
+                    <span className="text-xs font-mono font-extrabold text-white">
+                      #{p.id_numero.toString().padStart(2, '0')}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <span
+                      className={`text-sm font-black tracking-wide ${
+                        p.es_arbitro ? 'text-emerald-400' : 'text-amber-400'
+                      }`}
+                    >
+                      {p.nombre}
+                    </span>
+                    {p.es_arbitro && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700 flex items-center space-x-1">
+                        <Shield className="w-3 h-3 text-emerald-400" />
+                        <span>ÁRBITRO</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDismissCompletedGroupModal();
+              }}
+              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl transition-all shadow-lg shadow-amber-500/30"
+            >
+              Volver al Sorteo (Espacio o Clic)
             </button>
           </div>
         </div>
@@ -578,7 +692,7 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="space-y-1.5">
                       {Array.from({ length: groupData.maxCap }).map((_, idx) => {
                         const playerId = groupData.miembros[idx];
                         const playerObj = playerId ? state.jugadores.find(p => p.id_numero === playerId) : null;
@@ -586,15 +700,36 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
                         return (
                           <div
                             key={idx}
-                            className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${
+                            className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-all border ${
                               playerObj
                                 ? playerObj.es_arbitro
-                                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                                  : 'bg-slate-800 text-amber-300 border border-slate-700'
-                                : 'bg-slate-900/50 text-slate-600 border border-dashed border-slate-800'
+                                  ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800/60 font-black'
+                                  : 'bg-slate-900/70 text-amber-400 border-slate-800/80 font-bold'
+                                : 'bg-slate-900/20 text-slate-600 border-dashed border-slate-800'
                             }`}
                           >
-                            {playerObj ? `#${playerObj.id_numero}` : 'Vacio'}
+                            {playerObj ? (
+                              <>
+                                <div className="flex items-center space-x-2 truncate">
+                                  <span className="text-[10px] font-mono text-slate-400 font-bold">
+                                    {idx + 1}º
+                                  </span>
+                                  <span className="font-mono text-xs font-black text-white">
+                                    #{playerObj.id_numero.toString().padStart(2, '0')}
+                                  </span>
+                                  <span className="truncate text-xs">
+                                    {playerObj.nombre}
+                                  </span>
+                                </div>
+                                {playerObj.es_arbitro && (
+                                  <Shield className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 ml-1" />
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-[11px] font-mono italic text-slate-600">
+                                {idx + 1}º Vacío
+                              </span>
+                            )}
                           </div>
                         );
                       })}

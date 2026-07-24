@@ -2,10 +2,44 @@ import { calculateGroupStructure, generateGroupLabels, generateRoundRobinMatches
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
-const STORAGE_KEY = 'tour_challenger_tejo_db_v2';
+const STORAGE_KEY = 'tour_challenger_tejo_db_v3';
 
-// Lista Real del CSV: Lista de Jugadores F y M Salinas 2026 - Hoja 2.csv
+// Lista Real del CSV: Lista de Jugadores F y M Salinas 2026 - Hoja 1.csv (86 Jugadores)
 export const realSalinasPlayers = [
+  // Rama Femenina (31 Jugadoras)
+  { id_numero: 1, nombre: 'Mabel Mena', genero: 'F', es_arbitro: false },
+  { id_numero: 4, nombre: 'Mabel Vera', genero: 'F', es_arbitro: false },
+  { id_numero: 9, nombre: 'Cristina Quiroga', genero: 'F', es_arbitro: false },
+  { id_numero: 10, nombre: 'Lujan Perez', genero: 'F', es_arbitro: false },
+  { id_numero: 11, nombre: 'Erminda Soria', genero: 'F', es_arbitro: false },
+  { id_numero: 12, nombre: 'Sandra Perez', genero: 'F', es_arbitro: true },
+  { id_numero: 13, nombre: 'Mary Cabrera', genero: 'F', es_arbitro: false },
+  { id_numero: 17, nombre: 'Rosa Gonzalez', genero: 'F', es_arbitro: false },
+  { id_numero: 18, nombre: 'Rosario Apolonia', genero: 'F', es_arbitro: false },
+  { id_numero: 19, nombre: 'Raquel Rodriguez', genero: 'F', es_arbitro: false },
+  { id_numero: 20, nombre: 'Helena Hernandez', genero: 'F', es_arbitro: false },
+  { id_numero: 21, nombre: 'Marta Gonzalez', genero: 'F', es_arbitro: false },
+  { id_numero: 22, nombre: 'Lidia Silva', genero: 'F', es_arbitro: false },
+  { id_numero: 23, nombre: 'Rosario Alfonzo', genero: 'F', es_arbitro: false },
+  { id_numero: 24, nombre: 'Marcela Martinez', genero: 'F', es_arbitro: false },
+  { id_numero: 27, nombre: 'Zulma Borges', genero: 'F', es_arbitro: false },
+  { id_numero: 28, nombre: 'Cecilia Banchero', genero: 'F', es_arbitro: false },
+  { id_numero: 30, nombre: 'Maria E. Aguilar', genero: 'F', es_arbitro: false },
+  { id_numero: 31, nombre: 'Silvia Pereyra', genero: 'F', es_arbitro: false },
+  { id_numero: 32, nombre: 'Susana Ferreira', genero: 'F', es_arbitro: false },
+  { id_numero: 33, nombre: 'Gladys Bauza', genero: 'F', es_arbitro: false },
+  { id_numero: 36, nombre: 'Alba Falero', genero: 'F', es_arbitro: false },
+  { id_numero: 39, nombre: 'Marisa Hopper', genero: 'F', es_arbitro: false },
+  { id_numero: 45, nombre: 'Elayne Iglesias', genero: 'F', es_arbitro: false },
+  { id_numero: 46, nombre: 'Dorys Sosa', genero: 'F', es_arbitro: false },
+  { id_numero: 50, nombre: 'Yenny Barreto', genero: 'F', es_arbitro: false },
+  { id_numero: 205, nombre: 'Esther Illara', genero: 'F', es_arbitro: false },
+  { id_numero: 207, nombre: 'Nelly Choca', genero: 'F', es_arbitro: false },
+  { id_numero: 208, nombre: 'Carmen Sosa', genero: 'F', es_arbitro: false },
+  { id_numero: 215, nombre: 'Andrea Falero', genero: 'F', es_arbitro: false },
+  { id_numero: 216, nombre: 'Mariel Centurion', genero: 'F', es_arbitro: true },
+
+  // Rama Masculina (55 Jugadores)
   { id_numero: 52, nombre: 'HECTOR GONZALEZ', genero: 'M', es_arbitro: true },
   { id_numero: 53, nombre: 'RICHARD RAMIREZ', genero: 'M', es_arbitro: false },
   { id_numero: 54, nombre: 'DANIEL RABOSTO', genero: 'M', es_arbitro: false },
@@ -24,6 +58,7 @@ export const realSalinasPlayers = [
   { id_numero: 83, nombre: 'DANIEL AMADO', genero: 'M', es_arbitro: true },
   { id_numero: 84, nombre: 'MIGUEL RIENZO', genero: 'M', es_arbitro: true },
   { id_numero: 86, nombre: 'RICHAL MILAN', genero: 'M', es_arbitro: false },
+  { id_numero: 88, nombre: 'JOSE FALCON', genero: 'M', es_arbitro: false },
   { id_numero: 90, nombre: 'ROQUE BERON', genero: 'M', es_arbitro: false },
   { id_numero: 91, nombre: 'CARLOS ARISTIMUÑO', genero: 'M', es_arbitro: true },
   { id_numero: 92, nombre: 'JUAN ARISTIMUÑO', genero: 'M', es_arbitro: false },
@@ -93,8 +128,7 @@ export function getInitialState() {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      // Si el estado guardado tiene los datos de demostración anteriores, forzar la carga del CSV real
-      if (parsed.jugadores && parsed.jugadores.some(p => p.nombre === 'Ana María González' || p.nombre === 'Juan Carlos Pérez')) {
+      if (!parsed.jugadores || parsed.jugadores.length !== 86) {
         saveState(defaultInitialState);
         return defaultInitialState;
       }
