@@ -24,7 +24,7 @@ export async function publishStateToCloud(state) {
     } catch (error) {}
   }
 
-  // 2. Transmitir inmediatamente al canal en vivo de alta velocidad para celulares
+  // 2. Transmitir inmediatamente al canal en vivo para celulares móviles de espectadores
   try {
     await fetch(NTFY_URL, {
       method: 'POST',
@@ -39,7 +39,7 @@ export async function publishStateToCloud(state) {
 
 /**
  * Suscribe a los celulares espectadores a las actualizaciones en tiempo real.
- * Usa transmisión continua SSE + polling de ultra velocidad para celulares móviles (3G/4G/5G).
+ * Transmite de forma continua desde la nube a cualquier navegador móvil.
  * @param {Function} onStateUpdate - Callback invocado con el nuevo estado del torneo.
  * @param {Function} onStatusChange - Callback de estado de conexión (isConnected: boolean).
  * @returns {Function} Función para cancelar la suscripción (desuscripción limpia).
@@ -48,7 +48,7 @@ export function subscribeToCloudState(onStateUpdate, onStatusChange) {
   let eventSource = null;
   let pollInterval = null;
 
-  // 1. Suscripción por Firebase SDK (si está configurado)
+  // 1. Suscripción por Firebase SDK (si está activo)
   if (firebaseInitialized && db) {
     try {
       const tournamentRef = ref(db, TOURNAMENT_PATH);
@@ -68,38 +68,42 @@ export function subscribeToCloudState(onStateUpdate, onStatusChange) {
     } catch (e) {}
   }
 
+  // Helper para procesar sobres de mensajes de la nube
+  const processEnvelope = (rawText) => {
+    try {
+      const envelope = typeof rawText === 'string' ? JSON.parse(rawText) : rawText;
+      const payload = envelope.message ? (typeof envelope.message === 'string' ? JSON.parse(envelope.message) : envelope.message) : envelope;
+      if (payload && payload.jugadores) {
+        onStateUpdate(payload);
+        if (onStatusChange) onStatusChange(true);
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  };
+
   // 2. Transmisión continua SSE (Server-Sent Events) en vivo para celulares
   try {
-    eventSource = new EventSource(`${NTFY_URL}/sse`);
+    eventSource = new EventSource(`${NTFY_URL}/json`);
     eventSource.onmessage = (event) => {
-      try {
-        const raw = JSON.parse(event.data);
-        if (raw && raw.message) {
-          const stateData = JSON.parse(raw.message);
-          if (stateData && stateData.jugadores) {
-            onStateUpdate(stateData);
-            if (onStatusChange) onStatusChange(true);
-          }
-        }
-      } catch (e) {}
+      processEnvelope(event.data);
     };
     eventSource.onerror = () => {};
   } catch (e) {}
 
-  // 3. Carga inicial e inspección de respaldo (cada 1.8 segundos)
+  // 3. Sondeo activo de respaldo NDJSON cada 1.5 segundos
   const fetchCloudState = async () => {
     try {
-      const res = await fetch(`${NTFY_URL}/raw?poll=1`);
+      const res = await fetch(`${NTFY_URL}/json?poll=1`);
       if (res.ok) {
         const text = await res.text();
         if (text) {
           const lines = text.trim().split('\n');
-          const lastLine = lines[lines.length - 1];
-          if (lastLine) {
-            const data = JSON.parse(lastLine);
-            if (data && data.jugadores) {
-              onStateUpdate(data);
-              if (onStatusChange) onStatusChange(true);
+          for (let i = lines.length - 1; i >= 0; i--) {
+            const line = lines[i].trim();
+            if (line) {
+              const success = processEnvelope(line);
+              if (success) break;
             }
           }
         }
@@ -108,7 +112,7 @@ export function subscribeToCloudState(onStateUpdate, onStatusChange) {
   };
 
   fetchCloudState();
-  pollInterval = setInterval(fetchCloudState, 1800);
+  pollInterval = setInterval(fetchCloudState, 1500);
 
   return () => {
     if (pollInterval) clearInterval(pollInterval);

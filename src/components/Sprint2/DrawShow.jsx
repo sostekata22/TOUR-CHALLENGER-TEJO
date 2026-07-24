@@ -463,6 +463,8 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
             >
               Volver al Sorteo (Espacio o Clic)
             </button>
+          </div>
+        </div>
       )}
 
       {/* OVERLAY VISTA AMPLIADA DE UN GRUPO SELECCIONADO (Manual por el usuario, el sorteo sigue corriendo de fondo) */}
