@@ -83,12 +83,12 @@ export default function TombolaScene({ eligiblePlayers = [], isSpinningFast = fa
       ═══════════════════════════════ */}
       <div style={{
         flexShrink: 0,
-        width: '190px',
-        height: '190px',
+        width: '210px',
+        height: '210px',
         borderRadius: '50%',
         overflow: 'hidden',
-        border: '3px solid rgba(245,158,11,0.6)',
-        boxShadow: '0 0 32px rgba(245,158,11,0.25), 0 0 0 6px rgba(245,158,11,0.08), 0 4px 20px rgba(0,0,0,0.6)',
+        border: '3.5px solid rgba(245,158,11,0.65)',
+        boxShadow: '0 0 36px rgba(245,158,11,0.3), 0 0 0 7px rgba(245,158,11,0.08), 0 6px 24px rgba(0,0,0,0.6)',
         animation: 'tc-mascot-bounce 2.4s ease-in-out infinite',
         background: '#0f172a',
       }}>
@@ -105,13 +105,13 @@ export default function TombolaScene({ eligiblePlayers = [], isSpinningFast = fa
       </div>
 
       {/* ═══════════════════════════════
-          BOLILLERO SVG (derecha)
+          BOLILLERO SVG (derecha - Agrandado)
       ═══════════════════════════════ */}
       <div style={{ flexShrink: 0 }}>
         <svg
-          width="220"
-          height="220"
-          viewBox="0 0 220 220"
+          width="250"
+          height="230"
+          viewBox="0 0 220 200"
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
@@ -228,16 +228,6 @@ export default function TombolaScene({ eligiblePlayers = [], isSpinningFast = fa
             {/* Brillo perilla */}
             <circle cx="196" cy="92" r="3.5" fill="white" opacity="0.45"/>
           </g>
-
-          {/* ── ETIQUETA ESTADO ── */}
-          <rect x="20" y="182" width="180" height="22" rx="11"
-            fill="#0f172a" stroke="rgba(245,158,11,0.5)" strokeWidth="1.2"/>
-          <text x="110" y="197"
-            textAnchor="middle" fontSize="9" fontWeight="800"
-            fontFamily="system-ui" fill="#fbbf24"
-            style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            {isSpinningFast ? '⚡ EXTRAYENDO...' : '🎰 BOLILLERO GIRANDO'}
-          </text>
 
         </svg>
       </div>
