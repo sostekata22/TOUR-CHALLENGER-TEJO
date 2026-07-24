@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #0f172a;
+    color: #f8fafc;
+    overflow-x: hidden;
+  }
+}
+
+/* Glassmorphism & Custom Effects */
+.glass-panel {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-card {
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Siren Flashing Effect */
+.siren-active {
+  animation: sirenFlash 0.4s infinite alternate;
+}
+
+@keyframes sirenFlash {
+  0% {
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.8), inset 0 0 20px rgba(16, 185, 129, 0.5);
+    border-color: rgba(16, 185, 129, 1);
+  }
+  100% {
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.8), inset 0 0 20px rgba(245, 158, 11, 0.5);
+    border-color: rgba(245, 158, 11, 1);
+  }
+}
+
+/* Animación de Giro 3D del Bolillero */
+@keyframes spinTombola {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.tombola-spin {
+  animation: spinTombola 6s linear infinite;
+}
+
+.tombola-spin-fast {
+  animation: spinTombola 1.2s linear infinite;
+}
+
+/* Rebote de Bolillas Dentro del Bolillero */
+@keyframes bounceBall1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(20px, -25px) scale(1.1); }
+  50% { transform: translate(-15px, 18px) scale(0.9); }
+  75% { transform: translate(10px, -10px) scale(1.05); }
+}
+
+@keyframes bounceBall2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  30% { transform: translate(-22px, -18px) scale(1.08); }
+  60% { transform: translate(18px, 22px) scale(0.92); }
+  85% { transform: translate(-12px, -8px) scale(1.04); }
+}
+
+.ball-bounce-1 {
+  animation: bounceBall1 1.2s ease-in-out infinite;
+}
+
+.ball-bounce-2 {
+  animation: bounceBall2 1.5s ease-in-out infinite;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d97706;
+}
