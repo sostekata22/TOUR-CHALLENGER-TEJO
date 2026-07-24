@@ -272,13 +272,45 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
     return () => clearInterval(timer);
   }, [isAuto, pasoRevelacion, eligiblePlayers.length, speed, refereeModal, isReadOnly]);
 
+  // Función para cerrar el modal de Árbitro sincronizado en Firebase
+  const handleDismissRefereeModal = () => {
+    if (isReadOnly) return;
+    onUpdateState({
+      ...state,
+      estado_sorteo: {
+        ...state.estado_sorteo,
+        referee_modal: false
+      }
+    });
+  };
+
+  // Escuchar teclado (Espacio, Enter, Escape) para cerrar el cartel de Árbitro
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (refereeModal && (e.code === 'Space' || e.code === 'Enter' || e.code === 'Escape')) {
+        e.preventDefault();
+        handleDismissRefereeModal();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [refereeModal, state]);
+
   // Cambio de rama (Femenino / Masculino)
   const handleSwitchCategory = (cat) => {
+    if (isReadOnly) return;
     setActiveCategory(cat);
-    setPasoRevelacion(0);
-    setCurrentBall(null);
-    setRefereeModal(false);
     setIsAuto(false);
+    onUpdateState({
+      ...state,
+      estado_sorteo: {
+        ...state.estado_sorteo,
+        categoria_activa: cat,
+        paso_revelacion: 0,
+        bolilla_actual: null,
+        referee_modal: false
+      }
+    });
   };
 
   return (
@@ -287,7 +319,7 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
       {/* OVERLAY DE ÁRBITRO CON TARJETA VERDE */}
       {refereeModal && (
         <div
-          onClick={() => setRefereeModal(false)}
+          onClick={handleDismissRefereeModal}
           className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-6 text-center cursor-pointer select-none animate-in fade-in zoom-in duration-200"
         >
           <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-emerald-950/90 border-4 border-emerald-500/80 p-8 sm:p-10 rounded-3xl max-w-sm sm:max-w-md w-full shadow-2xl shadow-emerald-500/30 ring-4 ring-emerald-500/30 flex flex-col items-center justify-center space-y-4">
@@ -300,9 +332,27 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
               />
             </div>
 
-            <h1 className="text-4xl sm:text-6xl font-black tracking-widest bg-gradient-to-r from-emerald-400 via-green-300 to-white bg-clip-text text-transparent uppercase drop-shadow-md">
-              ÁRBITRO
-            </h1>
+            <div className="space-y-1">
+              <span className="text-xs font-black tracking-widest text-emerald-400 uppercase">
+                ¡Atención Mesa de Control!
+              </span>
+              <h2 className="text-4xl font-black text-white tracking-tight">
+                ÁRBITRO
+              </h2>
+              <p className="text-xs text-slate-300 pt-1">
+                {currentBall?.nombre} ha sido designado como árbitro del torneo.
+              </p>
+            </div>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDismissRefereeModal();
+              }}
+              className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl transition-all shadow-lg shadow-emerald-500/30"
+            >
+              Entendido (Continuar Sorteo)
+            </button>
           </div>
         </div>
       )}
