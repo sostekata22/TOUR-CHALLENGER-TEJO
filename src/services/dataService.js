@@ -2,7 +2,7 @@ import { calculateGroupStructure, generateGroupLabels, generateRoundRobinMatches
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
-const STORAGE_KEY = 'tour_challenger_tejo_db_v1';
+const STORAGE_KEY = 'tour_challenger_tejo_db_v2';
 
 // Lista Real del CSV: Lista de Jugadores F y M Salinas 2026 - Hoja 2.csv
 export const realSalinasPlayers = [
