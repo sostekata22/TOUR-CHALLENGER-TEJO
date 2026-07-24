@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
-import { Play, Pause, SkipForward, Volume2, Shield, Sparkles, CheckCircle2, ChevronRight, Disc, RotateCcw } from 'lucide-react';
+import { Play, Pause, SkipForward, Volume2, Shield, Sparkles, CheckCircle2, ChevronRight, Disc, RotateCcw, Maximize2, X } from 'lucide-react';
 import { calculateGroupStructure, generateGroupLabels } from '../../utils/tournamentEngine';
 import TombolaScene from './TombolaScene';
 
@@ -17,6 +17,7 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
   const [isAuto, setIsAuto] = useState(false);
   const [speed, setSpeed] = useState(2.5); // segundos
   const [isSpinningFast, setIsSpinningFast] = useState(false);
+  const [inspectGroupLabel, setInspectGroupLabel] = useState(null); // Grupo ampliado manualmente por usuario/espectador
 
   // Filtrar participantes no sorteados por categoría activa
   const jugadoresArr = Array.isArray(state.jugadores) ? state.jugadores : Object.values(state.jugadores || {});
@@ -334,6 +335,7 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
   const handleSwitchCategory = (cat) => {
     setActiveCategory(cat);
     setIsAuto(false);
+    setInspectGroupLabel(null);
     if (!isReadOnly) {
       onUpdateState({
         ...state,
@@ -460,6 +462,96 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
               className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl transition-all shadow-lg shadow-amber-500/30"
             >
               Volver al Sorteo (Espacio o Clic)
+            </button>
+      )}
+
+      {/* OVERLAY VISTA AMPLIADA DE UN GRUPO SELECCIONADO (Manual por el usuario, el sorteo sigue corriendo de fondo) */}
+      {inspectGroupLabel && (
+        <div
+          onClick={() => setInspectGroupLabel(null)}
+          className="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 text-center cursor-pointer select-none animate-in fade-in zoom-in duration-200"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border-2 border-amber-500/70 p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-2xl shadow-amber-500/20 ring-1 ring-amber-500/30 flex flex-col items-center justify-center space-y-4 relative"
+          >
+            <button
+              onClick={() => setInspectGroupLabel(null)}
+              className="absolute top-4 right-4 p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all"
+              title="Cerrar vista amplia"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="space-y-1">
+              <span className="text-[11px] font-black tracking-widest text-amber-400 uppercase">
+                {activeCategory === 'F' ? 'RAMA FEMENINA' : 'RAMA MASCULINA'} • VISTA AMPLIADA
+              </span>
+              <h2 className="text-3xl font-black text-white tracking-tight uppercase">
+                {inspectGroupLabel}
+              </h2>
+              <p className="text-xs text-slate-400 font-semibold">
+                {currentCategoryGroups[inspectGroupLabel]?.miembros.length || 0} / {currentCategoryGroups[inspectGroupLabel]?.maxCap || 5} CASILLEROS OCUPADOS
+              </p>
+            </div>
+
+            {/* Lista Ampliada de Integrantes */}
+            <div className="w-full space-y-2.5 max-h-80 overflow-y-auto pr-1 text-left">
+              {Array.from({ length: currentCategoryGroups[inspectGroupLabel]?.maxCap || 5 }).map((_, idx) => {
+                const playerId = currentCategoryGroups[inspectGroupLabel]?.miembros[idx];
+                const playerObj = playerId ? state.jugadores.find(p => p.id_numero === playerId) : null;
+
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
+                      playerObj
+                        ? playerObj.es_arbitro
+                          ? 'bg-emerald-950/60 border-emerald-700/80 shadow-md shadow-emerald-950/30'
+                          : 'bg-slate-950/80 border-slate-800'
+                        : 'bg-slate-950/40 border-dashed border-slate-800/80'
+                    }`}
+                  >
+                    {playerObj ? (
+                      <>
+                        <div className="flex items-center space-x-3 truncate">
+                          <span className="text-xs font-mono font-bold text-slate-400 w-5">
+                            {idx + 1}º
+                          </span>
+                          <span className="text-sm font-mono font-black text-white">
+                            #{playerObj.id_numero.toString().padStart(2, '0')}
+                          </span>
+                          <span
+                            className={`text-base font-black tracking-wide truncate ${
+                              playerObj.es_arbitro ? 'text-emerald-400' : 'text-amber-400'
+                            }`}
+                          >
+                            {playerObj.nombre}
+                          </span>
+                        </div>
+
+                        {playerObj.es_arbitro && (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-950 text-emerald-300 border border-emerald-600 flex items-center space-x-1 flex-shrink-0">
+                            <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>ÁRBITRO</span>
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-xs font-mono italic text-slate-600">
+                        {idx + 1}º Casillero libre...
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setInspectGroupLabel(null)}
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition-all border border-slate-700"
+            >
+              Cerrar Vista Ampliada
             </button>
           </div>
         </div>
@@ -673,16 +765,21 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
                 return (
                   <div
                     key={label}
-                    className={`p-3 rounded-2xl border transition-all ${
+                    onClick={() => setInspectGroupLabel(label)}
+                    className={`p-3 rounded-2xl border transition-all cursor-pointer hover:border-amber-400/70 hover:shadow-lg hover:shadow-amber-500/10 group ${
                       isFull
                         ? 'bg-amber-500/10 border-amber-500/40 ring-1 ring-amber-500/30'
                         : 'bg-slate-950/60 border-slate-800'
                     }`}
+                    title="Haz clic para agrandar este grupo"
                   >
                     <div className="flex items-center justify-between text-xs font-bold mb-2">
-                      <span className={isFull ? 'text-amber-400' : 'text-slate-200'}>{label}</span>
-                      <span className="text-[10px] text-slate-400">
-                        {groupData.miembros.length} / {groupData.maxCap} casilleros
+                      <div className="flex items-center space-x-2">
+                        <span className={isFull ? 'text-amber-400' : 'text-slate-200'}>{label}</span>
+                        <Maximize2 className="w-3 h-3 text-slate-500 group-hover:text-amber-400 transition-colors" />
+                      </div>
+                      <span className="text-[10px] text-slate-400 group-hover:text-amber-300 transition-colors">
+                        {groupData.miembros.length} / {groupData.maxCap} casilleros 🔍
                       </span>
                     </div>
 
