@@ -258,13 +258,16 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
       let newCompletedModal = null;
       if (groupMembers.length >= maxCap) {
         triggerConfetti();
+        // Ordenar por draw_order para que la placa muestre el orden real de sorteo
+        const sortedMembers = [...groupMembers].sort((a, b) => (a.draw_order || 0) - (b.draw_order || 0));
         newCompletedModal = {
           label: targetGroup,
           maxCap,
-          players: groupMembers.map(p => ({
+          players: sortedMembers.map(p => ({
             id_numero: p.id_numero,
             nombre: p.nombre,
-            es_arbitro: p.es_arbitro
+            es_arbitro: p.es_arbitro,
+            draw_order: p.draw_order
           }))
         };
       }
@@ -442,7 +445,7 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
                       {idx + 1}º
                     </span>
                     <span className="text-xs font-mono font-extrabold text-white">
-                      #{p.id_numero.toString().padStart(2, '0')}
+                      {p.id_numero.toString().padStart(2, '0')}
                     </span>
                   </div>
 
@@ -532,7 +535,7 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
                             {idx + 1}º
                           </span>
                           <span className="text-sm font-mono font-black text-white">
-                            #{playerObj.id_numero.toString().padStart(2, '0')}
+                            {playerObj.id_numero.toString().padStart(2, '0')}
                           </span>
                           <span
                             className={`text-base font-black tracking-wide truncate ${
@@ -819,7 +822,7 @@ export default function DrawShow({ state, onUpdateState, onProceedToMatches, isA
                                     {idx + 1}º
                                   </span>
                                   <span className="font-mono text-xs font-black text-white">
-                                    #{playerObj.id_numero.toString().padStart(2, '0')}
+                                    {playerObj.id_numero.toString().padStart(2, '0')}
                                   </span>
                                   <span className="truncate text-xs">
                                     {playerObj.nombre}
