@@ -26,26 +26,14 @@ export default function App() {
     }
   };
 
-  // Al arrancar: garantizar que siempre tengamos la lista oficial completa
-  // Si el estado local o la nube tienen menos jugadores, forzar la lista oficial
+  // Al arrancar: solo restaurar lista oficial si NO hay jugadores en absoluto
+  // Si el admin editó la lista, respetar esos cambios
   useEffect(() => {
     const currentPlayers = state.jugadores || [];
-    const isMissingPlayers = currentPlayers.length < realSalinasPlayers.length;
-    const hasMissingF = currentPlayers.filter(p => p.genero === 'F').length < 31;
-    const hasMissingM = currentPlayers.filter(p => p.genero === 'M').length < 55;
-
-    if (isMissingPlayers || hasMissingF || hasMissingM) {
-      // Reconstruir preservando estado de sorteo si existe
-      const savedMap = {};
-      currentPlayers.forEach(p => { if (p && p.id_numero != null) savedMap[p.id_numero] = p; });
-      const fixedPlayers = realSalinasPlayers.map(official => {
-        const saved = savedMap[official.id_numero];
-        return saved ? { ...official, sorteado: saved.sorteado || false, grupo_asignado: saved.grupo_asignado || null } : { ...official };
-      });
-      const updated = { ...state, jugadores: fixedPlayers, _updatedAt: Date.now() };
+    if (currentPlayers.length === 0) {
+      const updated = { ...state, jugadores: realSalinasPlayers, _updatedAt: Date.now() };
       setState(updated);
       saveState(updated);
-      // Publicar a la nube para corregir el estado remoto
       publishStateToCloud(updated);
     }
   }, []);
@@ -103,19 +91,12 @@ export default function App() {
         // Solo aplicar si es más reciente que lo que tenemos
         if (isPublishing.current && cloudTime <= localTime) return;
 
-        // Garantizar que los jugadores siempre sean la lista oficial completa
-        let safeJugadores = cloudState.jugadores || [];
-        if (safeJugadores.length < realSalinasPlayers.length) {
-          // Reconstruir desde la lista oficial preservando el estado del sorteo
-          const savedMap = {};
-          safeJugadores.forEach(p => { if (p && p.id_numero != null) savedMap[p.id_numero] = p; });
-          safeJugadores = realSalinasPlayers.map(official => {
-            const saved = savedMap[official.id_numero];
-            return saved
-              ? { ...official, sorteado: saved.sorteado || false, grupo_asignado: saved.grupo_asignado || null }
-              : { ...official };
-          });
-        }
+        // Solo bloquear si la nube mand\u00f3 una lista completamente vac\u00eda (error de red/corrupci\u00f3n)
+        const safeJugadores = (cloudState.jugadores && cloudState.jugadores.length > 0)
+          ? cloudState.jugadores
+          : (stateRef.current.jugadores && stateRef.current.jugadores.length > 0)
+            ? stateRef.current.jugadores
+            : realSalinasPlayers;
 
         const safeState = { ...cloudState, jugadores: safeJugadores };
         setState(safeState);

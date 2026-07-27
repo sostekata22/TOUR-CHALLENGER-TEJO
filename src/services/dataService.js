@@ -128,11 +128,11 @@ export function getInitialState() {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (parsed && parsed.jugadores && parsed.jugadores.length >= 86) {
-        // Estado válido: conservar pero asegurar que los jugadores oficiales estén presentes
-        return mergeOfficialPlayers(parsed);
+      // Estado válido si tiene jugadores (el admin puede tener más o menos que la lista oficial)
+      if (parsed && Array.isArray(parsed.jugadores) && parsed.jugadores.length > 0) {
+        return parsed;
       }
-      // Estado incompleto: reconstruir con jugadores oficiales + estado guardado
+      // Sin jugadores: usar lista oficial
       if (parsed && typeof parsed === 'object') {
         const merged = { ...defaultInitialState, ...parsed, jugadores: realSalinasPlayers };
         saveState(merged);
