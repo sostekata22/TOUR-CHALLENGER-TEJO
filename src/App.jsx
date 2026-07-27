@@ -88,10 +88,11 @@ export default function App() {
         const cloudTime = cloudState._updatedAt || cloudState._lastUpdated || 0;
         const localTime = stateRef.current._updatedAt || 0;
 
-        // Solo aplicar si es más reciente que lo que tenemos
-        if (isPublishing.current && cloudTime <= localTime) return;
+        // Ignorar si estamos publicando o si el dato de la nube NO es más nuevo que el local
+        if (isPublishing.current) return;
+        if (cloudTime <= localTime) return;
 
-        // Solo bloquear si la nube mand\u00f3 una lista completamente vac\u00eda (error de red/corrupci\u00f3n)
+        // Solo bloquear si la nube mandó una lista completamente vacía (error de red/corrupción)
         const safeJugadores = (cloudState.jugadores && cloudState.jugadores.length > 0)
           ? cloudState.jugadores
           : (stateRef.current.jugadores && stateRef.current.jugadores.length > 0)
@@ -140,9 +141,10 @@ export default function App() {
     if (isAdmin) {
       isPublishing.current = true;
       publishStateToCloud(timestampedState).finally(() => {
+        // 5 segundos: tiempo suficiente para que Firebase confirme sin que el eco nos sobreescriba
         setTimeout(() => {
           isPublishing.current = false;
-        }, 300);
+        }, 5000);
       });
     }
   };
